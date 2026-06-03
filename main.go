@@ -25,12 +25,9 @@ var db *sql.DB
 func connectDB() {
 	var err error
 
-	const mysqlUser = "root"
-	const mysqlPassword = "samuel12345"
-
 	db, err = sql.Open(
 		"mysql",
-		mysqlUser+":"+mysqlPassword+"@tcp(127.0.0.1:3306)/construction_db",
+		"root:gFSIguKgTkEgLiFfoKchkPyLiMwVjQjW@tcp(acela.proxy.rlwy.net:41408)/railway",
 	)
 
 	if err != nil {
