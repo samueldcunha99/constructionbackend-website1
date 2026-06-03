@@ -41,36 +41,36 @@ func connectDB() {
 	fmt.Println("Database Connected Successfully")
 }
 
-func sendEmail(to string) error {
+func sendEmail(contact Contact) error {
 	const gmailUser = "Samueldcunha99@gmail.com"
 	const gmailAppPassword = "rlxk lmnn bicg ccou"
 
 	m := gomail.NewMessage()
 
 	m.SetHeader("From", gmailUser)
-	m.SetHeader("To", to)
-	m.SetHeader("Cc", gmailUser)
+	m.SetHeader("To", gmailUser)
+	m.SetHeader("Cc", contact.Email)
 
 	m.SetHeader(
 		"Subject",
-		"Samuel Construction - Inquiry Received",
+		"New Inquiry - NMS ENTERPRISES",
 	)
 
-	m.SetBody(
-		"text/html",
-		`
-		<h2>Thank You For Contacting Samuel Construction</h2>
-		<p>We have received your inquiry successfully.</p>
-		<p>Our team will contact you shortly.</p>
+	body := fmt.Sprintf(`
+		<h2>New Inquiry Received</h2>
+		<p><b>Name:</b> %s</p>
+		<p><b>Email:</b> %s</p>
+		<p><b>Phone:</b> %s</p>
+		<p><b>Message:</b> %s</p>
 		<br>
-		<p>Regards,</p>
-		<p><b>Samuel Construction</b></p>
-		`,
-	)
+		<p>This inquiry was submitted from your construction website.</p>
+	`, contact.Name, contact.Email, contact.Phone, contact.Message)
+
+	m.SetBody("text/html", body)
 
 	d := gomail.NewDialer(
 		"smtp.gmail.com",
-		587,
+		465,
 		gmailUser,
 		gmailAppPassword,
 	)
@@ -138,10 +138,16 @@ func main() {
 			return
 		}
 
-		err = sendEmail(contact.Email)
+		err = sendEmail(contact)
 
 		if err != nil {
 			fmt.Println("EMAIL ERROR:", err.Error())
+
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "Form Submitted Successfully, but email notification failed",
+			})
+			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
