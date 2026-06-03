@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/gin-contrib/cors"
@@ -157,5 +158,11 @@ func main() {
 		})
 	})
 
-	router.Run(":5000")
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = "5000"
+	}
+
+	router.Run("0.0.0.0:" + port)
 }
