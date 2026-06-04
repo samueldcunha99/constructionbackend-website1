@@ -137,18 +137,12 @@ func main() {
 			})
 			return
 		}
-
-		err = sendEmail(contact)
-
-		if err != nil {
-			fmt.Println("EMAIL ERROR:", err.Error())
-
-			c.JSON(http.StatusOK, gin.H{
-				"success": true,
-				"message": "Form Submitted Successfully, but email notification failed",
-			})
-			return
-		}
+		contactCopy := contact
+		go func() {
+			if err := sendEmail(contactCopy); err != nil {
+				fmt.Println("EMAIL ERROR:", err.Error())
+			}
+		}()
 
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
