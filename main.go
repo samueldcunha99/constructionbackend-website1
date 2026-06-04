@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,7 +12,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"gopkg.in/gomail.v2"
 )
 
 type Contact struct {
@@ -42,19 +43,10 @@ func connectDB() {
 }
 
 func sendEmail(contact Contact) error {
-	const gmailUser = "Samueldcunha99@gmail.com"
-	const gmailAppPassword = "rlxk lmnn bicg ccou"
-
-	m := gomail.NewMessage()
-
-	m.SetHeader("From", gmailUser)
-	m.SetHeader("To", gmailUser)
-	m.SetHeader("Reply-To", contact.Email)
-
-	m.SetHeader(
-		"Subject",
-		"New Inquiry - NMS ENTERPRISES",
-	)
+	apiKey := os.Getenv("RESEND_API_KEY")
+	if apiKey == "" {
+		return fmt.Errorf("RESEND_API_KEY is not set")
+	}
 
 	body := fmt.Sprintf(`
 		<h2>New Inquiry Received</h2>
@@ -66,19 +58,39 @@ func sendEmail(contact Contact) error {
 		<p>This inquiry was submitted from your construction website.</p>
 	`, contact.Name, contact.Email, contact.Phone, contact.Message)
 
-	plainBody := fmt.Sprintf("New Inquiry Received\n\nName: %s\nEmail: %s\nPhone: %s\nMessage: %s\n", contact.Name, contact.Email, contact.Phone, contact.Message)
+	payload := map[string]any{
+		"from":     "NMS Enterprises <onboarding@resend.dev>",
+		"to":       []string{"samueldcunha99@gmail.com"},
+		"reply_to": contact.Email,
+		"subject":  "New Inquiry - NMS ENTERPRISES",
+		"html":     body,
+		"text":     fmt.Sprintf("New Inquiry Received\n\nName: %s\nEmail: %s\nPhone: %s\nMessage: %s\n", contact.Name, contact.Email, contact.Phone, contact.Message),
+	}
 
-	m.SetBody("text/plain", plainBody)
-	m.AddAlternative("text/html", body)
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
 
-	d := gomail.NewDialer(
-		"smtp.gmail.com",
-		465,
-		gmailUser,
-		gmailAppPassword,
-	)
+	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return err
+	}
 
-	return d.DialAndSend(m)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("resend returned status %s", resp.Status)
+	}
+
+	return nil
 }
 
 func main() {
