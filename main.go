@@ -49,7 +49,7 @@ func sendEmail(contact Contact) error {
 
 	m.SetHeader("From", gmailUser)
 	m.SetHeader("To", gmailUser)
-	m.SetHeader("Cc", contact.Email)
+	m.SetHeader("Reply-To", contact.Email)
 
 	m.SetHeader(
 		"Subject",
@@ -66,7 +66,10 @@ func sendEmail(contact Contact) error {
 		<p>This inquiry was submitted from your construction website.</p>
 	`, contact.Name, contact.Email, contact.Phone, contact.Message)
 
-	m.SetBody("text/html", body)
+	plainBody := fmt.Sprintf("New Inquiry Received\n\nName: %s\nEmail: %s\nPhone: %s\nMessage: %s\n", contact.Name, contact.Email, contact.Phone, contact.Message)
+
+	m.SetBody("text/plain", plainBody)
+	m.AddAlternative("text/html", body)
 
 	d := gomail.NewDialer(
 		"smtp.gmail.com",
@@ -139,9 +142,12 @@ func main() {
 		}
 		contactCopy := contact
 		go func() {
+			fmt.Println("EMAIL SEND STARTED:", contactCopy.Email)
 			if err := sendEmail(contactCopy); err != nil {
 				fmt.Println("EMAIL ERROR:", err.Error())
+				return
 			}
+			fmt.Println("EMAIL SENT SUCCESSFULLY:", contactCopy.Email)
 		}()
 
 		c.JSON(http.StatusOK, gin.H{
